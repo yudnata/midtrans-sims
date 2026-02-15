@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser, loading } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-neutral-900/80 backdrop-blur-md border-b border-neutral-800 shadow-sm">
@@ -28,17 +28,36 @@ export default function Navbar() {
                 {/* Points Display */}
                 <div className="flex items-center gap-1.5 sm:gap-2 bg-neutral-800/50 hover:bg-neutral-800 rounded-full px-2.5 sm:px-4 py-1.5 border border-neutral-700 transition-all duration-200 group cursor-default">
                   <div className="bg-yellow-500/20 p-1 sm:p-1.5 rounded-full group-hover:bg-yellow-500/30 transition-colors">
-                    <Zap className="w-3.5 h-3.5 sm:w-4 h-4 text-yellow-400 fill-yellow-400/50" />
-                  </div>
-                  <div className="flex flex-col leading-none">
-                    <span className="font-bold text-yellow-400 text-xs sm:text-sm">
-                      {user.points.toLocaleString()}
-                    </span>
-                    <span className="hidden xs:block text-[9px] sm:text-[10px] text-neutral-400 font-medium uppercase tracking-wider">
-                      Points
-                    </span>
-                  </div>
-                </div>
+      <Zap className="w-3.5 h-3.5 sm:w-4 h-4 text-yellow-400 fill-yellow-400/50" />
+    </div>
+    <div className="flex flex-col leading-none">
+      <span className="font-bold text-yellow-400 text-xs sm:text-sm">
+        {user.points.toLocaleString()}
+      </span>
+      <span className="hidden xs:block text-[9px] sm:text-[10px] text-neutral-400 font-medium uppercase tracking-wider">
+        Points
+      </span>
+    </div>
+    <button
+      onClick={refreshUser}
+      className={`ml-1 p-1 hover:bg-neutral-700 rounded-full transition-all ${loading ? 'animate-spin' : ''}`}
+      title="Refresh points"
+    >
+      <svg
+        className="w-3 h-3 text-neutral-400"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+        />
+      </svg>
+    </button>
+  </div>
 
                 {/* User Info & Actions */}
                 <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-3 border-l border-neutral-700/50">

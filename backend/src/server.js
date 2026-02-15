@@ -178,7 +178,11 @@ app.post('/api/payment/charge', authenticateToken, async (req, res) => {
     };
 
     const transaction = await snap.createTransaction(parameter);
-    res.json({ token: transaction.token, redirect_url: transaction.redirect_url });
+    res.json({
+      token: transaction.token,
+      redirect_url: transaction.redirect_url,
+      orderId: orderId,
+    });
   } catch (err) {
     console.error('Charge Error:', err);
     res.status(500).json({ message: 'Transaction failed' });
@@ -262,50 +266,73 @@ app.get('/api/payment/status/:orderId', authenticateToken, async (req, res) => {
 
 // Helper function to update transaction and points
 async function updateTransactionStatus(orderId, transactionStatus, fraudStatus) {
+  console.log(`[Status Update] Start for ${orderId}: ${transactionStatus}`);
+
   const trxCheck = await db.query('SELECT * FROM transactions WHERE order_id = $1', [orderId]);
-  if (trxCheck.rows.length === 0) return;
+  if (trxCheck.rows.length === 0) {
+    console.log(`[Status Update] Transaction ${orderId} not found.`);
+    return;
+  }
 
   const trx = trxCheck.rows[0];
-  if (trx.status === 'success') return; // Already processed
+  if (trx.status === 'success') {
+    console.log(`[Status Update] ${orderId} already success. Skipping.`);
+    return;
+  }
+
+  // Normalize status to lowercase for comparison
+  const status = (transactionStatus || '').toLowerCase();
+  const fraud = (fraudStatus || '').toLowerCase();
 
   let newStatus = 'pending';
   let success = false;
 
-  if (transactionStatus == 'capture') {
-    if (fraudStatus == 'accept') {
+  if (status === 'capture') {
+    if (fraud === 'accept') {
       newStatus = 'success';
       success = true;
     }
-  } else if (transactionStatus == 'settlement') {
+  } else if (status === 'settlement') {
     newStatus = 'success';
     success = true;
-  } else if (['cancel', 'deny', 'expire'].includes(transactionStatus)) {
+  } else if (['cancel', 'deny', 'expire'].includes(status)) {
     newStatus = 'failed';
   }
 
   if (success) {
+    console.log(`[Status Update] Finalizing ${orderId}. Points to add: ${trx.points_added}`);
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
+
+      // Update transaction status
       await client.query('UPDATE transactions SET status = $1 WHERE order_id = $2', [
         'success',
         orderId,
       ]);
-      await client.query('UPDATE users SET points = points + $1 WHERE id = $2', [
-        trx.points_added,
-        trx.user_id,
-      ]);
+
+      // Update user points (using COALESCE for safety)
+      const userUpdate = await client.query(
+        'UPDATE users SET points = COALESCE(points, 0) + $1 WHERE id = $2 RETURNING points',
+        [parseInt(trx.points_added), trx.user_id],
+      );
+
       await client.query('COMMIT');
-      console.log(`Transaction ${orderId} finalized as Success.`);
+      console.log(
+        `[Status Update] ${orderId} COMMITTED. New points for User ${trx.user_id}: ${userUpdate.rows[0].points}`,
+      );
     } catch (e) {
       await client.query('ROLLBACK');
-      console.error('DB Update Error:', e);
+      console.error(`[Status Update] ${orderId} ROLLBACK due to error:`, e);
       throw e;
     } finally {
       client.release();
     }
   } else if (newStatus === 'failed') {
     await db.query('UPDATE transactions SET status = $1 WHERE order_id = $2', ['failed', orderId]);
+    console.log(`[Status Update] ${orderId} marked as FAILED.`);
+  } else {
+    console.log(`[Status Update] ${orderId} remains PENDING (Midtrans status: ${status})`);
   }
 }
 

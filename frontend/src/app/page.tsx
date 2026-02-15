@@ -96,28 +96,23 @@ export default function Home() {
         },
       );
 
-      const { token } = response.data;
+      const { token, orderId } = response.data;
 
       if (snap) {
         snap.pay(token, {
           onSuccess: function (result: SnapResult) {
             toast.success('Payment Success! Checking points...', { duration: 3000 });
-            console.log(result);
-            // Manual check immediately
             checkTransactionStatus(result.order_id);
           },
           onPending: function (result: SnapResult) {
             toast('Waiting for payment...', { icon: '⏳' });
-            console.log(result);
           },
           onError: function (result: SnapResult) {
             toast.error('Payment Failed!');
-            console.log(result);
           },
           onClose: function () {
-            console.log('Popup closed');
-            // If they close it, status might be updated already
-            // We can't easily get the orderId here unless we store it
+            console.log('Popup closed, checking status for', orderId);
+            checkTransactionStatus(orderId);
           },
         });
       }
