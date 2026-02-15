@@ -38,9 +38,9 @@ export default function RedeemList({ items, userPoints, onRedeem }: RedeemListPr
           return (
             <div
               key={item.id}
-              className="bg-neutral-800/50 rounded-xl overflow-hidden border border-neutral-800 hover:border-pink-500/50 transition-all group"
+              className="bg-neutral-800/50 rounded-xl overflow-hidden transition-all group hover:scale-105"
             >
-              <div className="relative w-full aspect-video bg-neutral-800 flex items-center justify-center overflow-hidden group-hover:scale-110 transition-transform duration-300">
+              <div className="relative w-full aspect-video bg-neutral-800 flex items-center justify-center overflow-hidden transition-transform duration-300">
                 <Image
                   src={item.image}
                   alt={item.name}

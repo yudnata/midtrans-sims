@@ -27,7 +27,7 @@ export default function TopUpList({ packages, loadingId, onTopUp }: TopUpListPro
         {packages.map((pkg) => (
           <div
             key={pkg.id}
-            className="group relative bg-neutral-800 border border-neutral-700 rounded-xl p-6 hover:border-indigo-500 hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-all cursor-pointer"
+            className="group relative bg-neutral-800 rounded-xl p-6 hover:scale-105 transition-all cursor-pointer"
             onClick={() => loadingId !== pkg.id && onTopUp(pkg)}
           >
             {pkg.bonus > 0 && (
@@ -37,9 +37,7 @@ export default function TopUpList({ packages, loadingId, onTopUp }: TopUpListPro
             )}
 
             <div className="mb-4">
-              <span className="text-3xl font-extrabold text-white">
-                {pkg.points}
-              </span>
+              <span className="text-3xl font-extrabold text-white">{pkg.points}</span>
               <span className="text-neutral-400 text-sm ml-1">Pts</span>
             </div>
 

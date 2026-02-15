@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useSnap } from '../hooks/useSnap';
@@ -12,44 +13,44 @@ import RedeemList, { RewardItem } from '../components/RedeemList';
 
 // --- DATA ---
 const TOP_UP_PACKAGES: TopUpPackage[] = [
-  { id: 'p1', price: 15000, points: 100, bonus: 0 },
-  { id: 'p2', price: 30000, points: 220, bonus: 20 },
-  { id: 'p3', price: 50000, points: 400, bonus: 50 },
-  { id: 'p4', price: 100000, points: 1000, bonus: 200 },
+  { id: 'p1', price: 15000, points: 1000, bonus: 0 },
+  { id: 'p2', price: 30000, points: 2200, bonus: 200 },
+  { id: 'p3', price: 50000, points: 4000, bonus: 500 },
+  { id: 'p4', price: 100000, points: 10000, bonus: 2000 },
 ];
 
 const REWARD_CATALOG: RewardItem[] = [
   {
     id: 'r1',
-    name: 'Skin Hero: Cyberblade',
-    cost: 150,
+    name: 'Cyberpunk 2077',
+    cost: 5000,
     image:
-      'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=400&auto=format&fit=crop',
-    type: 'Rare',
+      'https://images.unsplash.com/photo-1605142859862-978be7eba909?q=80&w=800&auto=format&fit=crop',
+    type: 'RPG',
   },
   {
     id: 'r2',
-    name: 'Effect: Neon Trail',
-    cost: 300,
+    name: 'Elden Ring',
+    cost: 7500,
     image:
-      'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?q=80&w=400&auto=format&fit=crop',
-    type: 'Epic',
+      'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop',
+    type: 'Action',
   },
   {
     id: 'r3',
-    name: 'Avatar Border: Gold',
-    cost: 500,
+    name: 'Forza Horizon 5',
+    cost: 6000,
     image:
-      'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=400&auto=format&fit=crop', // Gold texture/abstract
-    type: 'Legend',
+      'https://images.unsplash.com/photo-1547394765-185e1e68f34e?q=80&w=800&auto=format&fit=crop',
+    type: 'Racing',
   },
   {
     id: 'r4',
-    name: 'Pass: Monthly VIP',
-    cost: 900,
+    name: 'Red Dead Redemption 2',
+    cost: 8000,
     image:
-      'https://images.unsplash.com/photo-1628260412297-a3377e45006f?q=80&w=400&auto=format&fit=crop', // Futuristic Card/Pass
-    type: 'Mythic',
+      'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800&auto=format&fit=crop',
+    type: 'Open World',
   },
 ];
 
@@ -100,32 +101,53 @@ export default function Home() {
       if (snap) {
         snap.pay(token, {
           onSuccess: function (result: SnapResult) {
-            alert(`Payment Success! Points will be added shortly.`);
+            toast.success('Payment Success! Checking points...', { duration: 3000 });
             console.log(result);
-            refreshUser(); // Refresh points from DB
+            // Manual check immediately
+            checkTransactionStatus(result.order_id);
           },
           onPending: function (result: SnapResult) {
-            alert('Waiting for payment!');
+            toast('Waiting for payment...', { icon: '⏳' });
             console.log(result);
           },
           onError: function (result: SnapResult) {
-            alert('Payment Failed!');
+            toast.error('Payment Failed!');
             console.log(result);
           },
           onClose: function () {
             console.log('Popup closed');
+            // If they close it, status might be updated already
+            // We can't easily get the orderId here unless we store it
           },
         });
       }
     } catch (error: unknown) {
       console.error('Top Up Error:', error);
       if (axios.isAxiosError(error) && error.response) {
-          alert(error.response.data?.message || 'Failed to initiate top up');
+        toast.error(error.response.data?.message || 'Failed to initiate top up');
       } else {
-          alert('Failed to initiate top up');
+        toast.error('Failed to initiate top up');
       }
     } finally {
       setLoading(null);
+    }
+  };
+
+  const checkTransactionStatus = async (orderId: string) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await axios.get(`${apiUrl}/payment/status/${orderId}`, {
+        withCredentials: true,
+      });
+
+      if (res.data.status === 'settlement' || res.data.status === 'capture') {
+        toast.success('Points added successfully!');
+        refreshUser();
+      } else {
+        toast.error(`Transaction status: ${res.data.status}`);
+      }
+    } catch (err) {
+      console.error('Status check failed', err);
     }
   };
 
@@ -136,40 +158,71 @@ export default function Home() {
     }
 
     if (user.points < item.cost) {
-      alert('Points not enough! Top up first.');
+      toast.error('Not enough points! Please top up first.');
       return;
     }
 
-    const confirm = window.confirm(`Redeem ${item.name} for ${item.cost} points?`);
-    if (confirm) {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-        await axios.post(
-          `${apiUrl}/redeem`,
-          {
-            cost: item.cost,
-            itemName: item.name,
-          },
-          { withCredentials: true },
-        );
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-2">
+          <span className="font-medium">
+            Redeem {item.name} for {item.cost} points?
+          </span>
+          <div className="flex gap-2 mt-1">
+            <button
+              className="bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700 transition"
+              onClick={() => {
+                toast.dismiss(t.id);
+                processRedeem(item);
+              }}
+            >
+              Confirm
+            </button>
+            <button
+              className="bg-neutral-700 text-white px-3 py-1 rounded-md text-sm hover:bg-neutral-600 transition"
+              onClick={() => toast.dismiss(t.id)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: 5000,
+      },
+    );
+  };
 
-        alert(`Success! You got ${item.name}`);
-        refreshUser(); // Update points
-      } catch (error: unknown) {
-        if (axios.isAxiosError(error) && error.response) {
-            alert(error.response.data?.message || 'Redeem failed');
-        } else {
-            alert('Redeem failed');
+  const processRedeem = async (item: RewardItem) => {
+    const redeemPromise = (async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      await axios.post(
+        `${apiUrl}/redeem`,
+        {
+          itemId: item.id,
+        },
+        { withCredentials: true },
+      );
+      refreshUser(); // Update points
+    })();
+
+    toast.promise(redeemPromise, {
+      loading: 'Redeeming reward...',
+      success: `Success! You got ${item.name}`,
+      error: (err) => {
+        if (axios.isAxiosError(err) && err.response) {
+          return err.response.data?.message || 'Redeem failed';
         }
-      }
-    }
+        return 'Redeem failed';
+      },
+    });
   };
 
   return (
     <main className="min-h-screen bg-neutral-900 text-white font-sans selection:bg-indigo-500 selection:text-white">
       {snapEmbed}
 
-      <Navbar userPoints={user?.points || 0} />
+      <Navbar />
 
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-12">
         <Hero />

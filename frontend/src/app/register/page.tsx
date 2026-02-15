@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
 
@@ -9,14 +10,12 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -38,12 +37,13 @@ export default function RegisterPage() {
       // For now, let's redirect to login or just show success.
       // Actually common pattern: register -> auto login.
       // But my backend /register doesn't set cookie. So let's redirect to login.
+      toast.success('Registration successful! Please login.');
       window.location.href = '/login';
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message);
+        toast.error(err.message);
       } else {
-        setError('An unexpected error occurred during registration');
+        toast.error('An unexpected error occurred during registration');
       }
     } finally {
       setLoading(false);
@@ -52,15 +52,9 @@ export default function RegisterPage() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-neutral-950 px-4">
-      <div className="max-w-md w-full bg-neutral-900 border border-neutral-800 rounded-2xl p-8 shadow-2xl">
+      <div className="max-w-md w-full bg-neutral-900 rounded-2xl px-12 py-12 shadow-2xl">
         <h2 className="text-3xl font-bold text-white mb-2 text-center">Create Account</h2>
         <p className="text-neutral-400 text-center mb-8">Join the platform to verify payments</p>
-
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-lg mb-6 text-sm">
-            {error}
-          </div>
-        )}
 
         <form
           onSubmit={handleSubmit}
@@ -71,8 +65,8 @@ export default function RegisterPage() {
             <input
               type="text"
               required
-              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-white focus:outline-hidden focus:border-indigo-500 transition-colors"
-              placeholder="John Doe"
+              className="w-full bg-neutral-800 rounded-lg px-4 py-3 text-white focus:outline-hidden focus:border-indigo-500 transition-colors"
+              placeholder="Nata"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -83,7 +77,7 @@ export default function RegisterPage() {
             <input
               type="email"
               required
-              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-white focus:outline-hidden focus:border-indigo-500 transition-colors"
+              className="w-full bg-neutral-800  rounded-lg px-4 py-3 text-white focus:outline-hidden focus:border-indigo-500 transition-colors"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -95,7 +89,7 @@ export default function RegisterPage() {
             <input
               type="password"
               required
-              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-white focus:outline-hidden focus:border-indigo-500 transition-colors"
+              className="w-full bg-neutral-800 rounded-lg px-4 py-3 text-white focus:outline-hidden focus:border-indigo-500 transition-colors"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

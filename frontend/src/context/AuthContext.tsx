@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 interface User {
   id: number;
@@ -60,8 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api.post('/auth/logout');
       setUser(null);
       router.push('/login');
+      toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout failed', error);
+      toast.error('Logout failed');
     }
   };
 
