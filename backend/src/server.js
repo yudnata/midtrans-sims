@@ -107,8 +107,8 @@ app.post('/api/auth/login', async (req, res) => {
     // Set HttpOnly Cookie
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // True in production (HTTPS)
-      sameSite: 'strict',
+      secure: true, // Required for sameSite: 'none'
+      sameSite: 'none', // Allow cross-site cookies
       maxAge: 3600000, // 1 hour
     });
 
@@ -136,7 +136,11 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 
 // Logout
 app.post('/api/auth/logout', (req, res) => {
-  res.clearCookie('token');
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+  });
   res.json({ message: 'Logged out' });
 });
 
