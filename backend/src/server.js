@@ -60,6 +60,15 @@ const authenticateToken = (req, res, next) => {
 
 // --- ROUTES: AUTH ---
 
+// Health Check
+app.get('/', (req, res) => {
+  res.json({ message: 'Server is up and running' });
+});
+
+app.get('/api', (req, res) => {
+  res.json({ message: 'Natstore API is running' });
+});
+
 // Register
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body;
