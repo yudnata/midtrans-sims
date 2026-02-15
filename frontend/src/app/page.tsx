@@ -104,9 +104,11 @@ export default function Home() {
             toast.success('Payment Success! Checking points...', { duration: 3000 });
             checkTransactionStatus(result.order_id);
           },
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           onPending: function (result: SnapResult) {
             toast('Waiting for payment...', { icon: '⏳' });
           },
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           onError: function (result: SnapResult) {
             toast.error('Payment Failed!');
           },

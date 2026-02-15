@@ -23,7 +23,7 @@ let snap = new midtransClient.Snap({
 // Top Up Packages (Backend Source of Truth)
 const TOP_UP_PACKAGES = {
   p1: { price: 15000, points: 1000, bonus: 0 },
-  p2: { price: 30000, points: 2200, bonus: 200 },
+  p2: { price: 30000, points: 2000, bonus: 200 },
   p3: { price: 50000, points: 4000, bonus: 500 },
   p4: { price: 100000, points: 10000, bonus: 2000 },
 };
