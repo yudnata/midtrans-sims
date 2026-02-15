@@ -26,13 +26,15 @@ export default function RootLayout({
       <body className={`${quicksand.variable} antialiased`}>
         <AuthProvider>
           <Toaster
-            position="top-center"
+            position="bottom-center"
             toastOptions={{
-              className: 'bg-neutral-800 text-white border border-neutral-700',
+              className: 'bg-neutral-800 text-white border border-neutral-700 font-sans',
               style: {
                 background: '#262626',
                 color: '#fff',
                 border: '1px solid #404040',
+                borderRadius: '16px',
+                padding: '12px 20px',
               },
             }}
           />
