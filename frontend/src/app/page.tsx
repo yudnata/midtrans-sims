@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,11 @@ import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
 import TopUpList, { TopUpPackage } from '../components/TopUpList';
 import RedeemList, { RewardItem } from '../components/RedeemList';
+import { CheckCircle2, XCircle } from 'lucide-react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 // --- DATA ---
 const TOP_UP_PACKAGES: TopUpPackage[] = [
@@ -26,7 +31,7 @@ const REWARD_CATALOG: RewardItem[] = [
     cost: 5000,
     image:
       'https://images.unsplash.com/photo-1605142859862-978be7eba909?q=80&w=800&auto=format&fit=crop',
-    type: 'RPG',
+    type: 'Legend',
   },
   {
     id: 'r2',
@@ -34,7 +39,7 @@ const REWARD_CATALOG: RewardItem[] = [
     cost: 7500,
     image:
       'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop',
-    type: 'Action',
+    type: 'Mythic',
   },
   {
     id: 'r3',
@@ -42,7 +47,7 @@ const REWARD_CATALOG: RewardItem[] = [
     cost: 6000,
     image:
       'https://images.unsplash.com/photo-1547394765-185e1e68f34e?q=80&w=800&auto=format&fit=crop',
-    type: 'Racing',
+    type: 'Epic',
   },
   {
     id: 'r4',
@@ -70,10 +75,36 @@ interface SnapResult {
 }
 
 export default function Home() {
-  const { user, refreshUser } = useAuth(); // Use global auth state
+  const { user, refreshUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const { snap, snapEmbed } = useSnap();
+  const footerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+        if (footerRef.current) {
+            gsap.from(footerRef.current, {
+                scrollTrigger: {
+                    trigger: footerRef.current,
+                    start: 'top bottom-=20',
+                    toggleActions: 'play none none none',
+                },
+                y: 20,
+                opacity: 0,
+                duration: 0.6,
+                ease: 'power2.out',
+                clearProps: 'all'
+            });
+        }
+        setTimeout(() => ScrollTrigger.refresh(), 200);
+    });
+
+    return () => {
+        ctx.revert();
+        ScrollTrigger.getAll().forEach(t => t.kill());
+    };
+  }, []);
 
   // --- HANDLERS ---
   const handleTopUp = async (pkg: TopUpPackage) => {
@@ -84,15 +115,14 @@ export default function Home() {
 
     setLoading(pkg.id);
     try {
-      // SECURE: Send only packageId to backend
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const response = await axios.post(
         `${apiUrl}/payment/charge`,
         {
-          packageId: pkg.id, // Backend looks up price
+          packageId: pkg.id,
         },
         {
-          withCredentials: true, // Send HttpOnly cookie
+          withCredentials: true,
         },
       );
 
@@ -101,19 +131,16 @@ export default function Home() {
       if (snap) {
         snap.pay(token, {
           onSuccess: function (result: SnapResult) {
-            toast.success('Payment Success! Checking points...', { duration: 3000 });
+            toast.success('Payment Success! Syncing...', { icon: <CheckCircle2 /> });
             checkTransactionStatus(result.order_id);
           },
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          onPending: function (result: SnapResult) {
+          onPending: function () {
             toast('Waiting for payment...', { icon: '⏳' });
           },
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          onError: function (result: SnapResult) {
-            toast.error('Payment Failed!');
+          onError: function () {
+            toast.error('Payment Error!', { icon: <XCircle /> });
           },
           onClose: function () {
-            console.log('Popup closed, checking status for', orderId);
             checkTransactionStatus(orderId);
           },
         });
@@ -138,10 +165,8 @@ export default function Home() {
       });
 
       if (res.data.status === 'settlement' || res.data.status === 'capture') {
-        toast.success('Points added successfully!');
+        toast.success('Credits deployed to account!');
         refreshUser();
-      } else {
-        toast.error(`Transaction status: ${res.data.status}`);
       }
     } catch (err) {
       console.error('Status check failed', err);
@@ -155,37 +180,38 @@ export default function Home() {
     }
 
     if (user.points < item.cost) {
-      toast.error('Not enough points! Please top up first.');
+      toast.error('Insufficient Credits! Purchase more points.');
       return;
     }
 
     toast(
       (t) => (
-        <div className="flex flex-col gap-2">
-          <span className="font-medium">
-            Redeem {item.name} for {item.cost} points?
+        <div className="flex flex-col gap-4 p-4">
+          <span className="font-black uppercase text-sm italic">
+            Authorize redemption: {item.name}?
           </span>
-          <div className="flex gap-2 mt-1">
+          <div className="flex gap-3">
             <button
-              className="bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700 transition"
+              className="bg-black text-white px-4 py-2 brutal-border font-black uppercase text-xs hover:bg-[#ff0055]"
               onClick={() => {
                 toast.dismiss(t.id);
                 processRedeem(item);
               }}
             >
-              Confirm
+              APPROVE
             </button>
             <button
-              className="bg-neutral-700 text-white px-3 py-1 rounded-md text-sm hover:bg-neutral-600 transition"
+              className="bg-white text-black px-4 py-2 brutal-border font-black uppercase text-xs hover:bg-gray-100"
               onClick={() => toast.dismiss(t.id)}
             >
-              Cancel
+              ABORT
             </button>
           </div>
         </div>
       ),
       {
-        duration: 5000,
+        duration: 8000,
+        className: 'brutal-border brutal-shadow !rounded-none !bg-white !text-black',
       },
     );
   };
@@ -200,44 +226,70 @@ export default function Home() {
         },
         { withCredentials: true },
       );
-      refreshUser(); // Update points
+      refreshUser();
     })();
 
     toast.promise(redeemPromise, {
-      loading: 'Redeeming reward...',
-      success: `Success! You got ${item.name}`,
-      error: (err) => {
-        if (axios.isAxiosError(err) && err.response) {
-          return err.response.data?.message || 'Redeem failed';
-        }
-        return 'Redeem failed';
-      },
+      loading: 'Authorizing loot transfer...',
+      success: `Authorized! ${item.name} is yours.`,
+      error: 'Authorization failed.',
     });
   };
 
   return (
-    <main className="min-h-screen bg-neutral-900 text-white font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#fdf6e3]">
       {snapEmbed}
 
       <Navbar />
 
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-12">
+      <main className="flex-grow">
+        {/* Full Width Hero */}
         <Hero />
 
-        <div id="topup-section">
-          <TopUpList
-            packages={TOP_UP_PACKAGES}
-            loadingId={loading}
-            onTopUp={handleTopUp}
-          />
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-12">
+          <div id="topup-section" className="space-y-12">
+              <TopUpList
+                  packages={TOP_UP_PACKAGES}
+                  loadingId={loading}
+                  onTopUp={handleTopUp}
+              />
+              
+              <div className="w-full h-1 bg-black opacity-10"></div>
+              
+              <RedeemList
+                  items={REWARD_CATALOG}
+                  userPoints={user?.points || 0}
+                  onRedeem={handleRedeem}
+              />
+          </div>
         </div>
+      </main>
 
-        <RedeemList
-          items={REWARD_CATALOG}
-          userPoints={user?.points || 0}
-          onRedeem={handleRedeem}
-        />
-      </div>
-    </main>
+      <footer 
+        ref={footerRef} 
+        style={{ opacity: 1 }} 
+        className="w-full bg-black text-white py-12 brutal-border-t border-white"
+      >
+          <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-12">
+              <div className="flex flex-col items-center md:items-start gap-4">
+                  <div className="flex items-center space-x-3">
+                      <div className="bg-[#ff0055] p-3 brutal-border-white">
+                          <span className="font-black text-2xl text-white">N</span>
+                      </div>
+                      <span className="font-black text-3xl uppercase tracking-tighter italic">NATSTORE.SYSTEM</span>
+                  </div>
+                  <p className="text-[10px] font-bold text-neutral-500 max-w-sm text-center md:text-left uppercase tracking-widest">
+                    COMMITTING DIGITAL ASSETS TO THE BLOCK SINCE 2026. ALL ASSETS SUBJECT TO SIMULATION PROTOCOLS.
+                  </p>
+              </div>
+              
+              <div className="flex flex-wrap justify-center gap-8 font-black uppercase text-xs tracking-widest text-[#ffde00]">
+                  <span className="hover:text-white cursor-pointer transition-colors border-b-2 border-transparent hover:border-white text-white">Security</span>
+                  <span className="hover:text-white cursor-pointer transition-colors border-b-2 border-transparent hover:border-white">Architecture</span>
+                  <span className="hover:text-white cursor-pointer transition-colors border-b-2 border-transparent hover:border-white">Infrastructure</span>
+              </div>
+          </div>
+      </footer>
+    </div>
   );
 }
