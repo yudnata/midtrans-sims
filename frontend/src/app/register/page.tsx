@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
-import { UserPlus, ArrowRight, Dna, ShieldCheck } from 'lucide-react';
+import { UserPlus, ArrowRight, Dna, ShieldCheck, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import gsap from 'gsap';
 
@@ -19,11 +19,10 @@ export default function RegisterPage() {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline();
       tl.from(cardRef.current, {
-        x: 100,
+        x: 40,
         opacity: 0,
-        rotate: 5,
-        duration: 0.8,
-        ease: 'back.out(1.7)',
+        duration: 0.6,
+        ease: 'power3.out',
       })
       .from('.reg-item', {
         y: 20,
@@ -31,15 +30,14 @@ export default function RegisterPage() {
         duration: 0.4,
         stagger: 0.08,
         ease: 'power2.out',
-      }, '-=0.4');
+        clearProps: 'all'
+      }, '-=0.2');
 
-      // Grid pulse animation
-      gsap.to('.grid-pulse', {
-        opacity: 0.4,
-        duration: 1.5,
+      gsap.to('.dna-icon', {
+        rotation: 360,
+        duration: 20,
         repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
+        ease: 'none',
       });
     }, cardRef);
     return () => ctx.revert();
@@ -69,13 +67,14 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-[#00d2ff]">
+    <main className="min-h-screen flex items-center justify-center p-4 bg-[#00d2ff]">
       <div 
         ref={cardRef} 
-        className="max-w-md w-full bg-white brutal-border brutal-shadow p-12 relative overflow-hidden"
+        style={{ opacity: 1 }} // Fallback
+        className="max-w-md w-full bg-white brutal-border brutal-shadow p-8 md:p-12 relative"
       >
-        <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
-          <Dna className="w-40 h-40 text-black" />
+        <div className="dna-icon absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+          <Dna className="w-32 h-32 text-black" />
         </div>
 
         <div className="reg-item inline-flex items-center gap-2 bg-black text-[#00d2ff] px-4 py-1 brutal-border mb-8">
@@ -95,13 +94,13 @@ export default function RegisterPage() {
           className="space-y-6"
         >
           <div className="reg-item">
-            <label className="block text-[10px] font-black text-black uppercase mb-2 tracking-[0.2em]">
+            <label className="block text-[10px] font-black text-black uppercase mb-1 tracking-[0.2em]">
               &gt; Assign: Alias
             </label>
             <input
               type="text"
               required
-              className="w-full bg-white brutal-border py-4 px-6 text-black font-black uppercase tracking-tighter text-lg focus:bg-gray-50 focus:outline-none placeholder:text-gray-200"
+              className="w-full bg-white brutal-border py-4 px-6 text-black font-black text-lg focus:bg-gray-50 focus:outline-none placeholder:text-gray-200"
               placeholder="OPERATOR_CODE"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -109,13 +108,13 @@ export default function RegisterPage() {
           </div>
 
           <div className="reg-item">
-            <label className="block text-[10px] font-black text-black uppercase mb-2 tracking-[0.2em]">
+            <label className="block text-[10px] font-black text-black uppercase mb-1 tracking-[0.2em]">
               &gt; Assign: Mail_Link
             </label>
             <input
               type="email"
               required
-              className="w-full bg-white brutal-border py-4 px-6 text-black font-black uppercase tracking-tighter text-lg focus:bg-gray-50 focus:outline-none placeholder:text-gray-200"
+              className="w-full bg-white brutal-border py-4 px-6 text-black font-black text-lg focus:bg-gray-50 focus:outline-none placeholder:text-gray-200"
               placeholder="USER_CONTACT@SIM.SYS"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -123,13 +122,13 @@ export default function RegisterPage() {
           </div>
 
           <div className="reg-item">
-            <label className="block text-[10px] font-black text-black uppercase mb-2 tracking-[0.2em]">
+            <label className="block text-[10px] font-black text-black uppercase mb-1 tracking-[0.2em]">
               &gt; Assign: Key_Safe
             </label>
             <input
               type="password"
               required
-              className="w-full bg-white brutal-border py-4 px-6 text-black font-black uppercase tracking-tighter text-lg focus:bg-gray-50 focus:outline-none placeholder:text-gray-200"
+              className="w-full bg-white brutal-border py-4 px-6 text-black font-black text-lg focus:bg-gray-50 focus:outline-none placeholder:text-gray-200"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -139,10 +138,11 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="reg-item w-full bg-black text-white font-black py-6 brutal-border brutal-shadow-sm hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all uppercase flex items-center justify-center gap-4 text-xl tracking-widest disabled:opacity-50 group"
+            style={{ opacity: 1 }} // Fallback
+            className="reg-item w-full bg-black text-white font-black py-5 brutal-border brutal-shadow-sm hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all uppercase flex items-center justify-center gap-4 text-xl tracking-widest mt-4 disabled:opacity-50 group"
           >
             {loading ? (
-              <span className="animate-pulse">COMMITTING...</span>
+              <Loader2 className="w-8 h-8 animate-spin" />
             ) : (
               <>
                 <span>COMMIT_IDENTITY</span>
@@ -152,7 +152,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <p className="reg-item mt-12 text-center text-[10px] font-black uppercase tracking-widest text-black/30">
+        <p className="reg-item mt-10 text-center text-[10px] font-black uppercase tracking-widest text-black/30">
           Already Synched?{' '}
           <Link
             href="/login"
