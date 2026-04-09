@@ -1,5 +1,8 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { z } = require('zod');
 const midtransClient = require('midtrans-client');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
@@ -8,6 +11,13 @@ const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
 const db = require('./db');
 require('dotenv').config();
+
+// Ensure JWT_SECRET is present
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('CRITICAL ERROR: JWT_SECRET environment variable is missing.');
+  process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -36,6 +46,7 @@ const REWARD_CATALOG = {
 };
 
 // --- MIDDLEWARE ---
+app.use(helmet());
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000', // Frontend URL
@@ -46,12 +57,33 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// --- RATE LIMITING ---
+// General API rate limit
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { message: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Strict rate limit for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // 10 login/register attempts per 15 minutes
+  message: { message: 'Too many auth attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api', apiLimiter);
+
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
   const token = req.cookies.token; // HttpOnly cookie
   if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
-  jwt.verify(token, process.env.JWT_SECRET || 'supersecretkey', (err, user) => {
+  jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) return res.status(403).json({ message: 'Forbidden' });
     req.user = user;
     next();
@@ -59,6 +91,36 @@ const authenticateToken = (req, res, next) => {
 };
 
 // --- ROUTES: AUTH ---
+
+// Validation Schemas
+const registerSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name too long'),
+  email: z.string().email('Invalid email format'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+});
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+// Validation Middleware
+const validateRequest = (schema) => (req, res, next) => {
+  try {
+    schema.parse(req.body);
+    next();
+  } catch (error) {
+    res.status(400).json({
+      message: 'Validation failed',
+      errors: error.errors.map((e) => e.message),
+    });
+  }
+};
 
 // Health Check
 app.get('/', (req, res) => {
@@ -70,7 +132,7 @@ app.get('/api', (req, res) => {
 });
 
 // Register
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter, validateRequest(registerSchema), async (req, res) => {
   const { name, email, password } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -89,7 +151,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, validateRequest(loginSchema), async (req, res) => {
   const { email, password } = req.body;
   try {
     const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -100,7 +162,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
     // Generate JWT
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'supersecretkey', {
+    const token = jwt.sign({ id: user.id }, JWT_SECRET, {
       expiresIn: '1h',
     });
 
